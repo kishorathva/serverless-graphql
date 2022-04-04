@@ -1,0 +1,44 @@
+service: serverless-api-example
+provider:
+  name: aws
+  runtime: nodejs12.x
+  versionFunctions: false # disable function versioning
+  region: us-east-1
+  stage: dev
+  apiGateWay:
+    shouldStartNameWithService: true
+  environment:
+    ITEM_TABLE: ${self:service}-items-${self:provider.stage} # table name
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.ITEM_TABLE}"
+functions:
+  graphql:
+    handler: src/graphql.handler
+    events:
+      - http:
+          path: qraphql # define Lambda endpoint
+          method: any # any HTTP method can access this Lambda
+          cors: true # enable CORS
+
+plugins:
+  - serverless-offline
+
+resources:
+  Resources:
+    ItemTable: # define the table
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: itemId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: itemId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.ITEM_TABLE}
